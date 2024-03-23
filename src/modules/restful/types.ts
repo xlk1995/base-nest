@@ -56,9 +56,6 @@ export interface ApiDocSource {
     tags?: (string | TagOption)[];
 }
 
-/**
- * 标签选项
- */
 export interface TagOption {
     name: string;
     description?: string;

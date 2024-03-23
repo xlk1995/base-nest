@@ -12,6 +12,7 @@ export class PostRepository extends BaseRepository<PostEntity> {
         // 在查询之前先查询出评论数量在添加到commentCount字段上
         return this.createQueryBuilder(this.qbName)
             .leftJoinAndSelect(`${this.qbName}.category`, 'category')
+            .leftJoinAndSelect(`${this.qbName}.author`, 'author')
             .leftJoinAndSelect(`${this.qbName}.tags`, 'tags')
             .addSelect((subQuery) => {
                 return subQuery

@@ -1,9 +1,9 @@
-import { get, has, isArray, isFunction, isNil, isObject, omit, set } from 'lodash';
+import { get, has, isFunction, isNil, isObject, omit, set } from 'lodash';
 
 import { deepMerge, isAsyncFn } from '../core/helpers';
 
 import { Env } from './env';
-import { ConfigStorage } from './storage';
+import { Storage } from './storage';
 import { ConfigStorageOption, ConfigureFactory, ConfigureRegister } from './types';
 
 /**
@@ -47,7 +47,7 @@ export class Configure {
     /**
      * 存储配置操作实例
      */
-    protected storage: ConfigStorage;
+    protected storage: Storage;
 
     /**
      * 初始化配置类
@@ -59,7 +59,7 @@ export class Configure {
         this._env = new Env();
         await this._env.load();
         const { enabled, filePath } = option;
-        this.storage = new ConfigStorage(enabled, filePath);
+        this.storage = new Storage(enabled, filePath);
         for (const key in configs) {
             this.add(key, configs[key]);
         }
@@ -195,9 +195,6 @@ export class Configure {
         if (!isNil(hook)) {
             value = isAsyncFn(hook) ? await hook(this, value) : hook(this, value);
         }
-        if (this.storage.enabled) {
-            value = deepMerge(value, get(this.storage.config, key, isArray(value) ? [] : {}));
-        }
         this.set(key, value, storage && isNil(await this.get(key, null)), append);
         return this;
     }
@@ -206,10 +203,7 @@ export class Configure {
         if (change || !has(this.storage.config, key)) {
             this.storage.set(key, value);
         } else if (isObject(get(this.storage.config, key))) {
-            this.storage.set(
-                key,
-                deepMerge(value, get(this.storage.config, key), append ? 'merge' : 'replace'),
-            );
+            this.storage.set(key, { ...value, ...get(this.storage.config, key) });
         }
         this.config = deepMerge(this.config, this.storage.config, append ? 'merge' : 'replace');
     }

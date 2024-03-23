@@ -1,8 +1,12 @@
+import chalk from 'chalk';
 import { toNumber } from 'lodash';
 
 import { Configure } from '../config/configure';
 
+import { echoApi } from '../restful/helpers';
+
 import { getRandomCharString, toBoolean } from './helpers';
+import { App } from './types';
 
 /**
  * DTOValidation装饰器选项
@@ -23,3 +27,11 @@ export const getDefaultAppConfig = (configure: Configure) => ({
     locale: configure.env.get('APP_LOCALE', 'zh_CN'),
     fallbackLocale: configure.env.get('APP_FALLBACK_LOCALE', 'en'),
 });
+
+export const listened: (app: App, startTime: Date) => () => Promise<void> =
+    ({ configure, container }, startTime) =>
+    async () => {
+        console.log();
+        await echoApi(configure, container);
+        console.log('used time:', chalk.cyan(`${new Date().getTime() - startTime.getTime()}`));
+    };

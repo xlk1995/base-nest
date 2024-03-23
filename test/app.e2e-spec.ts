@@ -1,11 +1,10 @@
-/* eslint-disable jest/expect-expect */
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
+import { createOptions } from '@/constants';
 import { Configure } from '@/modules/config/configure';
 import { createBootModule } from '@/modules/core/helpers';
-import { createOptions } from '@/options';
 
 describe('AppController (e2e)', () => {
     let app: INestApplication;

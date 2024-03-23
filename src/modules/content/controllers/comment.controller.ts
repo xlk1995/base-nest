@@ -1,14 +1,39 @@
 import { Body, Controller, Delete, Get, Post, Query, SerializeOptions } from '@nestjs/common';
 
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+import { In } from 'typeorm';
+
+import { PermissionAction } from '@/modules/rbac/constants';
+import { Permission } from '@/modules/rbac/decorators';
+import { checkOwnerPermission } from '@/modules/rbac/helpers';
+import { PermissionChecker } from '@/modules/rbac/types';
 import { Depends } from '@/modules/restful/decorators';
 import { DeleteDto } from '@/modules/restful/dtos';
 
+import { Guest, ReqUser } from '@/modules/user/decorators';
+
+import { UserEntity } from '@/modules/user/entities';
+
 import { ContentModule } from '../content.module';
 import { CreateCommentDto, QueryCommentDto, QueryCommentTreeDto } from '../dtos';
+import { CommentEntity } from '../entities';
+import { CommentRepository } from '../repositories';
 import { CommentService } from '../services';
 
+const permissions: Record<'create' | 'owner' | 'manage', PermissionChecker> = {
+    create: async (ab) => ab.can(PermissionAction.CREATE, CommentEntity.name),
+    owner: async (ab, ref, request) =>
+        checkOwnerPermission(ab, {
+            request,
+            getData: async (items) =>
+                ref.get(CommentRepository, { strict: false }).find({
+                    relations: ['user'],
+                    where: { id: In(items) },
+                }),
+        }),
+    manage: async (ab) => ab.can(PermissionAction.MANAGE, CommentEntity.name),
+};
 @ApiTags('评论操作')
 @Depends(ContentModule)
 @Controller('comments')
@@ -21,6 +46,7 @@ export class CommentController {
      */
     @Get('tree')
     @SerializeOptions({ groups: ['comment-tree'] })
+    @Guest()
     async tree(
         @Query()
         query: QueryCommentTreeDto,
@@ -29,11 +55,12 @@ export class CommentController {
     }
 
     /**
-     * 查询评论列表
+     * 分页查询评论列表
      * @param query
      */
     @Get()
     @SerializeOptions({ groups: ['comment-list'] })
+    @Guest()
     async list(
         @Query()
         query: QueryCommentDto,
@@ -46,21 +73,42 @@ export class CommentController {
      * @param data
      */
     @Post()
+    @ApiBearerAuth()
     @SerializeOptions({ groups: ['comment-detail'] })
+    @Permission(permissions.create)
     async store(
         @Body()
         data: CreateCommentDto,
+        @ReqUser() author: ClassToPlain<UserEntity>,
     ) {
-        return this.service.create(data);
+        return this.service.create(data, author);
     }
 
     /**
-     * 删除评论
+     * 批量删除评论
      * @param data
      */
     @Delete()
+    @ApiBearerAuth()
     @SerializeOptions({ groups: ['comment-list'] })
+    @Permission(permissions.owner)
     async delete(
+        @Body()
+        data: DeleteDto,
+    ) {
+        const { ids } = data;
+        return this.service.delete(ids);
+    }
+
+    /**
+     * 管理员批量删除评论
+     * @param data
+     */
+    @Delete('manage')
+    @ApiBearerAuth()
+    @SerializeOptions({ groups: ['comment-list'] })
+    @Permission(permissions.manage)
+    async manageDelete(
         @Body()
         data: DeleteDto,
     ) {

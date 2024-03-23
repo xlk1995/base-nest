@@ -1,8 +1,9 @@
-import { PartialType } from '@nestjs/swagger';
+import { OmitType, PartialType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
 import {
     IsBoolean,
+    IsDateString,
     IsDefined,
     IsEnum,
     IsNotEmpty,
@@ -21,6 +22,8 @@ import { toBoolean } from '@/modules/core/helpers';
 import { IsDataExist } from '@/modules/database/constraints';
 
 import { PaginateWithTrashedDto } from '@/modules/restful/dtos';
+
+import { UserEntity } from '@/modules/user/entities';
 
 import { PostOrderType } from '../constants';
 import { CategoryEntity, TagEntity } from '../entities';
@@ -57,18 +60,6 @@ export class QueryPostDto extends PaginateWithTrashedDto {
     @IsOptional()
     orderBy?: PostOrderType;
 
-    @Transform(({ value }) => toNumber(value))
-    @Min(1, { message: '当前页必须大于1' })
-    @IsNumber()
-    @IsOptional()
-    page = 1;
-
-    @Transform(({ value }) => toNumber(value))
-    @Min(1, { message: '每页显示数据必须大于1' })
-    @IsNumber()
-    @IsOptional()
-    limit = 10;
-
     /**
      * 根据分类ID查询此分类及其后代分类下的文章
      */
@@ -83,13 +74,27 @@ export class QueryPostDto extends PaginateWithTrashedDto {
     /**
      * 根据标签ID查询
      */
+    @IsDataExist(TagEntity, {
+        always: true,
+        message: '标签不存在',
+    })
     @IsUUID(undefined, { message: 'ID格式错误' })
     @IsOptional()
     tag?: string;
+
+    /**
+     * 根据文章作者ID查询
+     */
+    @IsDataExist(UserEntity, {
+        message: '指定的用户不存在',
+    })
+    @IsUUID(undefined, { message: '用户ID格式错误' })
+    @IsOptional()
+    author?: string;
 }
 
 /**
- * 新增文章验证
+ * 文章创建验证
  */
 @DtoValidation({ groups: ['create'] })
 export class CreatePostDto {
@@ -122,13 +127,13 @@ export class CreatePostDto {
     summary?: string;
 
     /**
-     * 是否发布
+     * 是否发布(发布时间)
      */
-    @Transform(({ value }) => toBoolean(value))
-    @IsBoolean({ always: true })
-    @ValidateIf((value) => !isNil(value.publish))
+    @IsDateString({ strict: true }, { always: true })
     @IsOptional({ always: true })
-    publish?: boolean;
+    @ValidateIf((value) => !isNil(value.publishedAt))
+    @Transform(({ value }) => (value === 'null' ? null : value))
+    publishedAt?: Date;
 
     /**
      * SEO关键字
@@ -154,42 +159,93 @@ export class CreatePostDto {
      * 所属分类ID
      */
     @IsDataExist(CategoryEntity, {
-        always: true,
         message: '分类不存在',
     })
     @IsUUID(undefined, {
+        each: true,
         always: true,
-        message: 'ID格式错误',
+        message: 'ID格式不正确',
     })
-    @IsOptional({ always: true })
-    category?: string;
+    @IsOptional({ groups: ['update'] })
+    category: string;
 
     /**
      * 关联标签ID
      */
     @IsDataExist(TagEntity, {
-        always: true,
         each: true,
+        always: true,
         message: '标签不存在',
     })
     @IsUUID(undefined, {
-        always: true,
         each: true,
-        message: 'ID格式错误',
+        always: true,
+        message: 'ID格式不正确',
     })
+    @IsNotEmpty({ groups: ['create'], message: '分类必须设置' })
     @IsOptional({ always: true })
     tags?: string[];
+
+    /**
+     * 文章作者ID:可用于在管理员发布文章时分配给其它用户,如果不设置,则作者为当前管理员
+     */
+    @IsDataExist(UserEntity, {
+        always: true,
+        message: '用户不存在',
+    })
+    @IsUUID(undefined, {
+        always: true,
+        message: '用户ID格式不正确',
+    })
+    @IsOptional({ always: true })
+    author?: string;
+}
+
+@DtoValidation({ type: 'query' })
+export class QueryFrontendPostDto extends OmitType(QueryPostDto, ['isPublished', 'trashed']) {}
+
+@DtoValidation({ type: 'query' })
+export class QueryOwnerPostDto extends OmitType(QueryPostDto, ['author']) {}
+
+/**
+ * 非管理员用户文章创建验证
+ */
+@DtoValidation({ groups: ['create'] })
+export class CreateUserPostDto extends OmitType(CreatePostDto, ['author', 'customOrder']) {
+    /**
+     * 用户侧排序:文章在用户的文章管理而非后台中,列表的排序规则
+     */
+    @Transform(({ value }) => toNumber(value))
+    @Min(0, { always: true, message: '排序值必须大于0' })
+    @IsNumber(undefined, { always: true })
+    @IsOptional({ always: true })
+    userOrder = 0;
 }
 
 /**
- * 更新文章验证
+ * 文章更新验证
  */
 @DtoValidation({ groups: ['update'] })
-export class UpdatePostDto extends PartialType(CreatePostDto) {
+export class UpdatePostDto extends PartialType(OmitType(CreatePostDto, ['author'])) {
     /**
      * 待更新ID
      */
     @IsUUID(undefined, { groups: ['update'], message: '文章ID格式错误' })
     @IsDefined({ groups: ['update'], message: '文章ID必须指定' })
     id: string;
+}
+
+/**
+ * 用户文章更新验证
+ */
+@DtoValidation({ groups: ['update'] })
+export class UpdateUserPostDto extends OmitType(UpdatePostDto, ['customOrder']) {
+    /**
+     * 用户侧排序:文章在用户的文章管理而非后台中,列表的排序规则
+     */
+    @Transform(({ value }) => toNumber(value))
+    @Min(0, { always: true, message: '排序值必须大于0' })
+    @IsNumber(undefined, { always: true })
+    @IsOptional({ always: true })
+    userOrder = 0;
 }

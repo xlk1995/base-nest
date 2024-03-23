@@ -5,6 +5,7 @@ import {
     CreateDateColumn,
     DeleteDateColumn,
     Entity,
+    Index,
     JoinTable,
     ManyToMany,
     ManyToOne,
@@ -14,6 +15,8 @@ import {
 } from 'typeorm';
 
 import type { Relation } from 'typeorm';
+
+import { UserEntity } from '@/modules/user/entities';
 
 import { PostBodyType } from '../constants';
 
@@ -30,14 +33,17 @@ export class PostEntity extends BaseEntity {
 
     @Expose()
     @Column({ comment: '文章标题' })
+    @Index({ fulltext: true })
     title: string;
 
     @Expose({ groups: ['post-detail'] })
     @Column({ comment: '文章内容', type: 'text' })
+    @Index({ fulltext: true })
     body: string;
 
     @Expose()
     @Column({ comment: '文章描述', nullable: true })
+    @Index({ fulltext: true })
     summary?: string;
 
     @Expose()
@@ -67,14 +73,12 @@ export class PostEntity extends BaseEntity {
     customOrder: number;
 
     @Expose()
-    @Type(() => Date)
     @CreateDateColumn({
         comment: '创建时间',
     })
     createdAt: Date;
 
     @Expose()
-    @Type(() => Date)
     @UpdateDateColumn({
         comment: '更新时间',
     })
@@ -87,6 +91,12 @@ export class PostEntity extends BaseEntity {
     })
     deletedAt: Date;
 
+    /**
+     * 通过queryBuilder生成的评论数量(虚拟字段)
+     */
+    @Expose()
+    commentCount: number;
+
     @Expose()
     @ManyToOne(() => CategoryEntity, (category) => category.posts, {
         nullable: true,
@@ -95,9 +105,8 @@ export class PostEntity extends BaseEntity {
     category: Relation<CategoryEntity>;
 
     @Expose()
-    @Type(() => TagEntity)
     @ManyToMany(() => TagEntity, (tag) => tag.posts, {
-        cascade: ['insert'],
+        cascade: true,
     })
     @JoinTable()
     tags: Relation<TagEntity>[];
@@ -106,4 +115,12 @@ export class PostEntity extends BaseEntity {
         cascade: true,
     })
     comments: Relation<CommentEntity>[];
+
+    @Expose()
+    @ManyToOne(() => UserEntity, (user) => user.posts, {
+        nullable: false,
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+    })
+    author: Relation<UserEntity>;
 }

@@ -8,24 +8,12 @@ import { CreateTagDto, UpdateTagDto } from '../dtos';
 import { TagEntity } from '../entities';
 import { TagRepository } from '../repositories';
 
-/**
- * 标签数据操作
- */
 @Injectable()
 export class TagService extends BaseService<TagEntity, TagRepository> {
+    protected enableTrash = true;
+
     constructor(protected repository: TagRepository) {
         super(repository);
-    }
-
-    /**
-     * 查询单个标签信息
-     * @param id
-     * @param callback 添加额外的查询
-     */
-    async detail(id: string) {
-        const qb = this.repository.buildBaseQB();
-        qb.where(`tag.id = :id`, { id });
-        return qb.getOneOrFail();
     }
 
     /**

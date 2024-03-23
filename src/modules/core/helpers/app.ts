@@ -1,27 +1,24 @@
 import { BadGatewayException, Global, Module, ModuleMetadata, Type } from '@nestjs/common';
-
-import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { useContainer } from 'class-validator';
-import { omit } from 'lodash';
+
+import { isNil, omit } from 'lodash';
 
 import { ConfigModule } from '@/modules/config/config.module';
 import { Configure } from '@/modules/config/configure';
 
+import { ConfigureFactory, ConfigureRegister } from '@/modules/config/types';
+
+import { getDefaultAppConfig } from '../constants';
 import { CoreModule } from '../core.module';
 import { AppFilter, AppIntercepter, AppPipe } from '../providers';
 import { App, AppConfig, CreateOptions } from '../types';
 
 import { createCommands } from './command';
-
 import { CreateModule } from './utils';
 
-/**
- * app实例常量
- */
-export const app: App = {
-    configure: new Configure(),
-    commands: [],
-};
+// app实例常量
+export const app: App = { configure: new Configure(), commands: [] };
 
 /**
  * 创建一个应用
@@ -61,9 +58,9 @@ export const createApp = (options: CreateOptions) => async (): Promise<App> => {
  */
 export async function createBootModule(
     configure: Configure,
-    options: Pick<CreateOptions, 'globals' | 'providers' | 'modules'>,
+    options: Pick<CreateOptions, 'globals' | 'modules'>,
 ): Promise<Type<any>> {
-    const { globals = {}, providers = [] } = options;
+    const { globals = {} } = options;
     // 获取需要导入的模块
     const modules = await options.modules(configure);
     const imports: ModuleMetadata['imports'] = (
@@ -82,6 +79,7 @@ export async function createBootModule(
         return item;
     });
     // 配置全局提供者
+    const providers: ModuleMetadata['providers'] = [];
     if (globals.pipe !== null) {
         const pipe = globals.pipe
             ? globals.pipe(configure)
@@ -110,6 +108,13 @@ export async function createBootModule(
         });
     }
 
+    if (!isNil(globals.guard)) {
+        providers.push({
+            provide: APP_GUARD,
+            useClass: globals.guard,
+        });
+    }
+
     return CreateModule('BootModule', () => {
         const meta: ModuleMetadata = {
             imports,
@@ -118,6 +123,21 @@ export async function createBootModule(
         return meta;
     });
 }
+
+/**
+ * 应用配置工厂
+ */
+export const createAppConfig: (
+    register: ConfigureRegister<RePartial<AppConfig>>,
+) => ConfigureFactory<AppConfig> = (register) => ({
+    register,
+    defaultRegister: (configure) => getDefaultAppConfig(configure),
+    hook: (configure: Configure, value) => {
+        if (isNil(value.url))
+            value.url = `${value.https ? 'https' : 'http'}://${value.host}:${value.port}`;
+        return value;
+    },
+});
 
 /**
  * 构建APP CLI,默认start命令应用启动监听app
@@ -129,7 +149,8 @@ export async function startApp(
     listened?: (app: App, startTime: Date) => () => Promise<void>,
 ) {
     const startTime = new Date();
-    const { container, configure } = await creator();
+    const { container, configure, commands } = await creator();
+    app.commands = commands;
     app.container = container;
     app.configure = configure;
     const { port, host } = await configure.get<AppConfig>('app');

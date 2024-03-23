@@ -1,6 +1,6 @@
 import { PickType } from '@nestjs/swagger';
-
 import { Transform } from 'class-transformer';
+
 import { IsDefined, IsNotEmpty, IsOptional, IsUUID, MaxLength, ValidateIf } from 'class-validator';
 
 import { DtoValidation } from '@/modules/core/decorators';
@@ -8,13 +8,25 @@ import { IsDataExist } from '@/modules/database/constraints';
 
 import { PaginateDto } from '@/modules/restful/dtos';
 
-import { CommentEntity, PostEntity } from '../entities';
+import { UserEntity } from '@/modules/user/entities';
+
+import { PostEntity } from '../entities';
 
 /**
  * 评论分页查询验证
  */
 @DtoValidation({ type: 'query' })
 export class QueryCommentDto extends PaginateDto {
+    /**
+     * 根据传入评论发布者的ID对评论进行过滤
+     */
+    @IsDataExist(UserEntity, {
+        message: '所属的用户不存在',
+    })
+    @IsUUID(undefined, { message: '用户ID格式错误' })
+    @IsOptional()
+    author?: string;
+
     /**
      * 所属文章ID
      */
@@ -33,7 +45,7 @@ export class QueryCommentDto extends PaginateDto {
 export class QueryCommentTreeDto extends PickType(QueryCommentDto, ['post']) {}
 
 /**
- * 新增评论验证
+ * 评论添加验证
  */
 @DtoValidation()
 export class CreateCommentDto {
@@ -47,6 +59,9 @@ export class CreateCommentDto {
     /**
      * 所属文章ID
      */
+    @IsDataExist(PostEntity, {
+        message: '文章不存在',
+    })
     @IsUUID(undefined, { message: 'ID格式错误' })
     @IsDefined({ message: 'ID必须指定' })
     post: string;
@@ -54,9 +69,6 @@ export class CreateCommentDto {
     /**
      * 上级评论ID
      */
-    @IsDataExist(CommentEntity, {
-        message: '父评论不存在',
-    })
     @IsUUID(undefined, { always: true, message: 'ID格式错误' })
     @ValidateIf((value) => value.parent !== null && value.parent)
     @IsOptional({ always: true })

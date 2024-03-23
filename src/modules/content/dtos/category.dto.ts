@@ -1,7 +1,9 @@
 import { PartialType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
+
 import {
     IsDefined,
+    IsEnum,
     IsNotEmpty,
     IsNumber,
     IsOptional,
@@ -13,17 +15,30 @@ import {
 import { toNumber } from 'lodash';
 
 import { DtoValidation } from '@/modules/core/decorators';
+import { SelectTrashMode } from '@/modules/database/constants';
 import { IsDataExist, IsTreeUnique, IsTreeUniqueExist } from '@/modules/database/constraints';
 
 import { CategoryEntity } from '../entities';
+/**
+ * 树形分类查询验证
+ */
+@DtoValidation({ type: 'query' })
+export class QueryCategoryTreeDto {
+    /**
+     * 根据软删除状态查询
+     */
+    @IsEnum(SelectTrashMode)
+    @IsOptional()
+    trashed?: SelectTrashMode;
+}
 
 /**
- * 新增分类验证
+ * 分类新增验证
  */
 @DtoValidation({ groups: ['create'] })
 export class CreateCategoryDto {
     /**
-     * 分类名称
+     * 分类名
      */
     @IsTreeUnique(CategoryEntity, {
         groups: ['create'],
@@ -45,7 +60,7 @@ export class CreateCategoryDto {
      * 父分类ID
      */
     @IsDataExist(CategoryEntity, { always: true, message: '父分类不存在' })
-    @IsUUID(undefined, { always: true, message: '父分类ID格式错误' })
+    @IsUUID(undefined, { always: true, message: '父分类ID格式不正确' })
     @ValidateIf((value) => value.parent !== null && value.parent)
     @IsOptional({ always: true })
     @Transform(({ value }) => (value === 'null' ? null : value))
@@ -58,11 +73,11 @@ export class CreateCategoryDto {
     @Min(0, { always: true, message: '排序值必须大于0' })
     @IsNumber(undefined, { always: true })
     @IsOptional({ always: true })
-    customOrder = 0;
+    customOrder?: number = 0;
 }
 
 /**
- * 更新分类验证
+ * 分类更新验证
  */
 @DtoValidation({ groups: ['update'] })
 export class UpdateCategoryDto extends PartialType(CreateCategoryDto) {

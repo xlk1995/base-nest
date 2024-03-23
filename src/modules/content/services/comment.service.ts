@@ -1,9 +1,14 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 
 import { isNil } from 'lodash';
+
 import { EntityNotFoundError, SelectQueryBuilder } from 'typeorm';
 
 import { BaseService } from '@/modules/database/base';
+
+import { UserEntity } from '@/modules/user/entities';
+
+import { UserRepository } from '@/modules/user/repositories';
 
 import { CreateCommentDto, QueryCommentDto, QueryCommentTreeDto } from '../dtos';
 import { CommentEntity } from '../entities';
@@ -16,6 +21,7 @@ import { CommentRepository, PostRepository } from '../repositories';
 export class CommentService extends BaseService<CommentEntity, CommentRepository> {
     constructor(
         protected repository: CommentRepository,
+        protected userRepository: UserRepository,
         protected postRepository: PostRepository,
     ) {
         super(repository);
@@ -26,7 +32,11 @@ export class CommentService extends BaseService<CommentEntity, CommentRepository
      * @param options
      */
     async findTrees(options: QueryCommentTreeDto = {}) {
-        return this.repository.findTrees(options);
+        return this.repository.findTrees({
+            addQuery: async (qb) => {
+                return isNil(options.post) ? qb : qb.where('post.id = :id', { id: options.post });
+            },
+        });
     }
 
     /**
@@ -51,7 +61,7 @@ export class CommentService extends BaseService<CommentEntity, CommentRepository
      * @param data
      * @param user
      */
-    async create(data: CreateCommentDto) {
+    async create(data: CreateCommentDto, author: ClassToPlain<UserEntity>) {
         const parent = await this.getParent(undefined, data.parent);
         if (!isNil(parent) && parent.post.id !== data.post) {
             throw new ForbiddenException('Parent comment and child comment must belong same post!');
@@ -60,6 +70,7 @@ export class CommentService extends BaseService<CommentEntity, CommentRepository
             ...data,
             parent,
             post: await this.getPost(data.post),
+            author: await this.userRepository.findOneByOrFail({ id: author.id }),
         });
         return this.repository.findOneOrFail({ where: { id: item.id } });
     }

@@ -6,9 +6,6 @@ import { toNumber } from 'lodash';
 import { DtoValidation } from '@/modules/core/decorators';
 import { PaginateOptions } from '@/modules/database/types';
 
-/**
- * 分页数据查询验证
- */
 @DtoValidation({ type: 'query' })
 export class PaginateDto implements PaginateOptions {
     /**

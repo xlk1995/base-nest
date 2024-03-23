@@ -1,24 +1,33 @@
 import {
-    Body,
     Controller,
-    Delete,
     Get,
+    Query,
+    SerializeOptions,
     Param,
     ParseUUIDPipe,
     Patch,
+    Delete,
     Post,
-    Query,
-    SerializeOptions,
+    Body,
 } from '@nestjs/common';
 
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+import { PermissionAction } from '@/modules/rbac/constants';
+import { Permission } from '@/modules/rbac/decorators';
+import { PermissionChecker } from '@/modules/rbac/types';
 import { Depends } from '@/modules/restful/decorators';
-import { DeleteDto, PaginateDto } from '@/modules/restful/dtos';
+
+import { DeleteWithTrashDto, PaginateDto } from '@/modules/restful/dtos';
+
+import { Guest } from '@/modules/user/decorators';
 
 import { ContentModule } from '../content.module';
 import { CreateTagDto, UpdateTagDto } from '../dtos';
+import { TagEntity } from '../entities';
 import { TagService } from '../services';
+
+const permission: PermissionChecker = async (ab) => ab.can(PermissionAction.MANAGE, TagEntity.name);
 
 @ApiTags('标签操作')
 @Depends(ContentModule)
@@ -27,11 +36,12 @@ export class TagController {
     constructor(protected service: TagService) {}
 
     /**
-     * 查询标签列表
+     * 分页查询标签列表
      * @param options
      */
     @Get()
     @SerializeOptions({})
+    @Guest()
     async list(
         @Query()
         options: PaginateDto,
@@ -45,6 +55,7 @@ export class TagController {
      */
     @Get(':id')
     @SerializeOptions({})
+    @Guest()
     async detail(
         @Param('id', new ParseUUIDPipe())
         id: string,
@@ -53,11 +64,13 @@ export class TagController {
     }
 
     /**
-     * 新增标签
+     * 添加新标签
      * @param data
      */
     @Post()
+    @ApiBearerAuth()
     @SerializeOptions({})
+    @Permission(permission)
     async store(
         @Body()
         data: CreateTagDto,
@@ -70,7 +83,9 @@ export class TagController {
      * @param data
      */
     @Patch()
+    @ApiBearerAuth()
     @SerializeOptions({})
+    @Permission(permission)
     async update(
         @Body()
         data: UpdateTagDto,
@@ -79,16 +94,18 @@ export class TagController {
     }
 
     /**
-     * 删除标签
+     * 批量删除标签
      * @param data
      */
     @Delete()
-    @SerializeOptions({ groups: ['post-list'] })
+    @ApiBearerAuth()
+    @SerializeOptions({})
+    @Permission(permission)
     async delete(
         @Body()
-        data: DeleteDto,
+        data: DeleteWithTrashDto,
     ) {
-        const { ids } = data;
-        return this.service.delete(ids);
+        const { ids, trash } = data;
+        return this.service.delete(ids, trash);
     }
 }

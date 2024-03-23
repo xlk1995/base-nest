@@ -1,11 +1,27 @@
 import { ModuleMetadata, PipeTransform, Type } from '@nestjs/common';
+
+import { IAuthGuard } from '@nestjs/passport';
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
 
+import dayjs from 'dayjs';
+import { Ora } from 'ora';
 import { StartOptions } from 'pm2';
 import { CommandModule } from 'yargs';
 
 import { Configure } from '../config/configure';
-import { ConfigStorageOption, ConfigureFactory } from '../config/types';
+import { ConfigStorageOption } from '../config/types';
+
+/**
+ * App对象类型
+ */
+export type App = {
+    // 应用容器实例
+    container?: NestFastifyApplication;
+    // 配置中心实例
+    configure: Configure;
+    // 命令列表
+    commands: CommandModule<RecordAny, RecordAny>[];
+};
 
 /**
  * 应用配置
@@ -55,23 +71,11 @@ export interface AppConfig {
 }
 
 /**
- * App对象类型
+ * 应用构建器
  */
-export type App = {
-    /**
-     * 应用容器实例
-     */
-    container?: NestFastifyApplication;
-    /**
-     * 配置类实例
-     */
-    configure: Configure;
-
-    /**
-     * 命令列表
-     */
-    commands: CommandModule<RecordAny, RecordAny>[];
-};
+export interface ContainerBuilder {
+    (params: { configure: Configure; BootModule: Type<any> }): Promise<NestFastifyApplication>;
+}
 
 /**
  * 创建应用的选项参数
@@ -81,6 +85,10 @@ export interface CreateOptions {
      * 返回值为需要导入的模块
      */
     modules: (configure: Configure) => Promise<Required<ModuleMetadata['imports']>>;
+    /**
+     * 应用命令
+     */
+    commands: () => CommandCollection;
     /**
      * 应用构建器
      */
@@ -102,9 +110,12 @@ export interface CreateOptions {
          * 全局过滤器,默认AppFilter,设置为null则不添加
          */
         filter?: Type<any> | null;
-    };
 
-    providers?: ModuleMetadata['providers'];
+        /**
+         * 全局守卫
+         */
+        guard?: Type<IAuthGuard>;
+    };
 
     /**
      * 配置选项
@@ -113,24 +124,12 @@ export interface CreateOptions {
         /**
          * 初始配置集
          */
-        factories: Record<string, ConfigureFactory<Record<string, any>>>;
+        factories: Record<string, any>;
         /**
          * 配置服务的动态存储选项
          */
         storage: ConfigStorageOption;
     };
-
-    /**
-     * 应用命令
-     */
-    commands: () => CommandCollection;
-}
-
-/**
- * 应用构建器
- */
-export interface ContainerBuilder {
-    (params: { configure: Configure; BootModule: Type<any> }): Promise<NestFastifyApplication>;
 }
 
 /**
@@ -140,7 +139,11 @@ export interface PanicOption {
     /**
      * 报错消息
      */
-    message: string;
+    message?: string;
+    /**
+     * ora对象
+     */
+    spinner?: Ora;
     /**
      * 抛出的异常信息
      */
@@ -150,6 +153,21 @@ export interface PanicOption {
      */
     exit?: boolean;
 }
+/**
+ * 命令集合
+ */
+export type CommandCollection = Array<CommandItem<any, any>>;
+
+/**
+ * 命令构造器
+ */
+export type CommandItem<T = Record<string, any>, U = Record<string, any>> = (
+    app: Required<App>,
+) => Promise<CommandOption<T, U>>;
+
+/**
+ * 命令选项
+ */
 export interface CommandOption<T = RecordAny, U = RecordAny> extends CommandModule<T, U> {
     /**
      * 是否为执行后即退出进程的瞬时应用
@@ -157,12 +175,28 @@ export interface CommandOption<T = RecordAny, U = RecordAny> extends CommandModu
     instant?: boolean;
 }
 
-// 当前运行的nest实例:container
-// 配置模块实例: configure
-// 以及所有的命令模块: commands
-export type CommandItem<T = Record<string, any>, U = Record<string, any>> = (
-    app: Required<App>,
-) => Promise<CommandOption<T, U>>;
-
-// 这是命令构造器的列表数组类型
-export type CommandCollection = Array<CommandItem<any, any>>;
+/**
+ * getTime函数获取时间的选项参数
+ */
+export interface TimeOptions {
+    /**
+     * 时间
+     */
+    date?: dayjs.ConfigType;
+    /**
+     * 输出格式
+     */
+    format?: dayjs.OptionType;
+    /**
+     * 语言
+     */
+    locale?: string;
+    /**
+     * 是否严格模式
+     */
+    strict?: boolean;
+    /**
+     * 时区
+     */
+    zonetime?: string;
+}

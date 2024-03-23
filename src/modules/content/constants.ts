@@ -31,12 +31,3 @@ export enum PostOrderType {
      */
     CUSTOM = 'custom',
 }
-
-/**
- * 树形模型在删除父级后子级的处理方式
- */
-export enum TreeChildrenResolve {
-    DELETE = 'delete',
-    UP = 'up',
-    ROOT = 'root',
-}

@@ -1,4 +1,4 @@
-import { Exclude, Expose, Type } from 'class-transformer';
+import { Exclude, Expose } from 'class-transformer';
 import {
     BaseEntity,
     Column,
@@ -13,6 +13,8 @@ import {
 } from 'typeorm';
 
 import type { Relation } from 'typeorm';
+
+import { UserEntity } from '@/modules/user/entities';
 
 import { PostEntity } from './post.entity';
 
@@ -30,7 +32,6 @@ export class CommentEntity extends BaseEntity {
     body: string;
 
     @Expose()
-    @Type(() => Date)
     @CreateDateColumn({
         comment: '创建时间',
     })
@@ -44,10 +45,10 @@ export class CommentEntity extends BaseEntity {
     parent: Relation<CommentEntity> | null;
 
     @Expose({ groups: ['comment-tree'] })
-    @Type(() => CommentEntity)
     @TreeChildren({ cascade: true })
     children: Relation<CommentEntity>[];
 
+    @Expose()
     @ManyToOne(() => PostEntity, (post) => post.comments, {
         // 文章不能为空
         nullable: false,
@@ -56,4 +57,12 @@ export class CommentEntity extends BaseEntity {
         onUpdate: 'CASCADE',
     })
     post: Relation<PostEntity>;
+
+    @Expose()
+    @ManyToOne((type) => UserEntity, (user) => user.comments, {
+        nullable: false,
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+    })
+    author: Relation<UserEntity>;
 }

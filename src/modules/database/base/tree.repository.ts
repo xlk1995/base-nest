@@ -11,22 +11,18 @@ import {
     TreeRepositoryUtils,
 } from 'typeorm';
 
-import { OrderType } from '@/modules/database/constants';
-
-import { getOrderByQuery } from '@/modules/database/helpers';
-
-import { OrderQueryType, QueryParams } from '@/modules/database/types';
-
-import { TreeChildrenResolve } from '../../content/constants';
+import { OrderType, TreeChildrenResolve } from '../constants';
+import { getOrderByQuery } from '../helpers';
+import { OrderQueryType, QueryParams } from '../types';
 
 /**
  * 基础树形存储类
  */
-export abstract class BaseTreeRepository<E extends ObjectLiteral> extends TreeRepository<E> {
+export class BaseTreeRepository<E extends ObjectLiteral> extends TreeRepository<E> {
     /**
-     * 构建查询时默认的模型对应的查询名称
+     * 查询器名称
      */
-    protected abstract _qbName: string;
+    protected _qbName = 'treeEntity';
 
     /**
      * 删除父分类后是否提升子分类的等级

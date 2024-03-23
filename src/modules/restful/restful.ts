@@ -45,7 +45,6 @@ export class Restful extends BaseRestful {
     /**
      * 构建Open API
      * @param container
-     * @param metadata
      */
     async factoryDocs<T extends INestApplication>(
         container: T,

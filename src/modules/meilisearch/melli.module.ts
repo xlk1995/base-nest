@@ -10,7 +10,7 @@ import { MeilliService } from './meilli.service';
 export class MeilliModule {
     static async forRoot(configure: Configure) {
         if (!configure.has('meilli')) {
-            panic({ message: 'MeilliSearch config not exists or not right!' });
+            panic({ message: 'Database config not exists or not right!' });
         }
         return {
             global: true,

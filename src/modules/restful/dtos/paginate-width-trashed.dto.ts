@@ -6,9 +6,6 @@ import { SelectTrashMode } from '@/modules/database/constants';
 
 import { PaginateDto } from './paginate.dto';
 
-/**
- * 带软删除的分页数据查询验证
- */
 @DtoValidation({ type: 'query' })
 export class PaginateWithTrashedDto extends PaginateDto {
     /**

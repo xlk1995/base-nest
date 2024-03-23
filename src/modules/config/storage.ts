@@ -8,7 +8,7 @@ import YAML from 'yaml';
 /**
  * 存储配置
  */
-export class ConfigStorage {
+export class Storage {
     /**
      * 是否开启存储配置功能
      */

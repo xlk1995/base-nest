@@ -9,25 +9,9 @@ import { Configure } from '../config/configure';
 
 import { CreateModule } from '../core/helpers';
 
-import { App } from '../core/types';
-
 import { CONTROLLER_DEPENDS } from './constants';
 import { Restful } from './restful';
 import { APIDocOption, RouteOption } from './types';
-
-/**
- * 启动信息打印
- * @param app
- * @param startTime
- */
-export const listened: (app: App, startTime: Date) => () => Promise<void> =
-    ({ configure, container }, startTime) =>
-    async () => {
-        console.log();
-        await echoApi(configure, container);
-        console.log('used time:', chalk.cyan(`${new Date().getTime() - startTime.getTime()}`));
-    };
-
 /**
  * 输出API和DOC地址
  * @param factory

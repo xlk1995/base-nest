@@ -2,15 +2,12 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { isNil } from 'lodash';
 import { In, ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 
-import { TreeChildrenResolve } from '@/modules/content/constants';
-
-import { SelectTrashMode } from '../constants';
+import { SelectTrashMode, TreeChildrenResolve } from '../constants';
 import { paginate, treePaginate } from '../helpers';
 import { PaginateOptions, PaginateReturn, QueryHook, ServiceListQueryOption } from '../types';
 
 import { BaseRepository } from './repository';
 import { BaseTreeRepository } from './tree.repository';
-
 /**
  *  CRUD操作服务
  */
@@ -27,7 +24,7 @@ export abstract class BaseService<
     /**
      * 是否开启软删除功能
      */
-    protected enableTrash = false;
+    protected enableTrash = true;
 
     constructor(repository: R) {
         this.repository = repository;

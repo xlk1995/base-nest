@@ -1,8 +1,8 @@
-import { createMeilliConfig } from '@/modules/meilisearch/config';
+import { MelliConfig } from '@/modules/meilisearch/types';
 
-export const meilli = createMeilliConfig((configure) => [
+export const meilli = (): MelliConfig => [
     {
         name: 'default',
         host: 'http://localhost:7700',
     },
-]);
+];

@@ -6,19 +6,27 @@ import {
     Param,
     ParseUUIDPipe,
     Patch,
-    Post,
     Query,
     SerializeOptions,
 } from '@nestjs/common';
 
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+import { PermissionAction } from '@/modules/rbac/constants';
+import { Permission } from '@/modules/rbac/decorators';
+import { PermissionChecker } from '@/modules/rbac/types';
 import { Depends } from '@/modules/restful/decorators';
-import { DeleteDto, PaginateDto } from '@/modules/restful/dtos';
+
+import { DeleteWithTrashDto, PaginateDto } from '@/modules/restful/dtos';
+import { Guest } from '@/modules/user/decorators';
 
 import { ContentModule } from '../content.module';
-import { CreateCategoryDto, UpdateCategoryDto } from '../dtos';
+import { UpdateCategoryDto } from '../dtos';
+import { CategoryEntity } from '../entities';
 import { CategoryService } from '../services';
+
+const permission: PermissionChecker = async (ab) =>
+    ab.can(PermissionAction.MANAGE, CategoryEntity.name);
 
 @ApiTags('分类操作')
 @Depends(ContentModule)
@@ -28,11 +36,13 @@ export class CategoryController {
 
     /**
      * 查询分类树
+     * @param options
      */
     @Get('tree')
     @SerializeOptions({ groups: ['category-tree'] })
+    @Guest()
     async tree() {
-        return this.service.findTrees();
+        return this.service.findTrees({});
     }
 
     /**
@@ -41,10 +51,8 @@ export class CategoryController {
      */
     @Get()
     @SerializeOptions({ groups: ['category-list'] })
-    async list(
-        @Query()
-        options: PaginateDto,
-    ) {
+    @Guest()
+    async list(@Query() options: PaginateDto) {
         return this.service.paginate(options);
     }
 
@@ -54,6 +62,7 @@ export class CategoryController {
      */
     @Get(':id')
     @SerializeOptions({ groups: ['category-detail'] })
+    @Guest()
     async detail(
         @Param('id', new ParseUUIDPipe())
         id: string,
@@ -62,24 +71,13 @@ export class CategoryController {
     }
 
     /**
-     * 新增分类
-     * @param data
-     */
-    @Post()
-    @SerializeOptions({ groups: ['category-detail'] })
-    async store(
-        @Body()
-        data: CreateCategoryDto,
-    ) {
-        return this.service.create(data);
-    }
-
-    /**
      * 更新分类
      * @param data
      */
     @Patch()
+    @ApiBearerAuth()
     @SerializeOptions({ groups: ['category-detail'] })
+    @Permission(permission)
     async update(
         @Body()
         data: UpdateCategoryDto,
@@ -92,12 +90,14 @@ export class CategoryController {
      * @param data
      */
     @Delete()
+    @ApiBearerAuth()
     @SerializeOptions({ groups: ['category-list'] })
+    @Permission(permission)
     async delete(
         @Body()
-        data: DeleteDto,
+        data: DeleteWithTrashDto,
     ) {
-        const { ids } = data;
-        return this.service.delete(ids);
+        const { ids, trash } = data;
+        return this.service.delete(ids, trash);
     }
 }

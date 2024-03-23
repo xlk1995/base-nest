@@ -1,4 +1,5 @@
-import { DynamicModule, Module, ModuleMetadata, Provider, Type } from '@nestjs/common';
+import { Module, DynamicModule, Type, Provider, ModuleMetadata } from '@nestjs/common';
+
 import { TypeOrmModule, TypeOrmModuleOptions, getDataSourceToken } from '@nestjs/typeorm';
 
 import { DataSource, ObjectType } from 'typeorm';
@@ -15,6 +16,7 @@ import {
     UniqueTreeConstraint,
     UniqueTreeExistConstraint,
 } from './constraints';
+import { AutoMigrate } from './resolver/auto-migrate';
 import { DbOptions } from './types';
 
 @Module({})
@@ -34,6 +36,7 @@ export class DatabaseModule {
             UniqueExistContraint,
             UniqueTreeConstraint,
             UniqueTreeExistConstraint,
+            AutoMigrate,
         ];
 
         return {
