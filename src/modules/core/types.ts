@@ -2,6 +2,7 @@ import { ModuleMetadata, PipeTransform, Type } from '@nestjs/common';
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
 
 import { StartOptions } from 'pm2';
+import { CommandModule } from 'yargs';
 
 import { Configure } from '../config/configure';
 import { ConfigStorageOption, ConfigureFactory } from '../config/types';
@@ -65,6 +66,11 @@ export type App = {
      * 配置类实例
      */
     configure: Configure;
+
+    /**
+     * 命令列表
+     */
+    commands: CommandModule<RecordAny, RecordAny>[];
 };
 
 /**
@@ -113,6 +119,11 @@ export interface CreateOptions {
          */
         storage: ConfigStorageOption;
     };
+
+    /**
+     * 应用命令
+     */
+    commands: () => CommandCollection;
 }
 
 /**
@@ -139,3 +150,19 @@ export interface PanicOption {
      */
     exit?: boolean;
 }
+export interface CommandOption<T = RecordAny, U = RecordAny> extends CommandModule<T, U> {
+    /**
+     * 是否为执行后即退出进程的瞬时应用
+     */
+    instant?: boolean;
+}
+
+// 当前运行的nest实例:container
+// 配置模块实例: configure
+// 以及所有的命令模块: commands
+export type CommandItem<T = Record<string, any>, U = Record<string, any>> = (
+    app: Required<App>,
+) => Promise<CommandOption<T, U>>;
+
+// 这是命令构造器的列表数组类型
+export type CommandCollection = Array<CommandItem<any, any>>;

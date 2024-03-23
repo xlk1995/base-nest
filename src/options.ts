@@ -51,4 +51,5 @@ export const createOptions: CreateOptions = {
         }
         return container;
     },
+    commands: () => [],
 };

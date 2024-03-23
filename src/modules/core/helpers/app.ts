@@ -11,12 +11,17 @@ import { CoreModule } from '../core.module';
 import { AppFilter, AppIntercepter, AppPipe } from '../providers';
 import { App, AppConfig, CreateOptions } from '../types';
 
+import { createCommands } from './command';
+
 import { CreateModule } from './utils';
 
 /**
  * app实例常量
  */
-export const app: App = { configure: new Configure() };
+export const app: App = {
+    configure: new Configure(),
+    commands: [],
+};
 
 /**
  * 创建一个应用
@@ -45,6 +50,7 @@ export const createApp = (options: CreateOptions) => async (): Promise<App> => {
     useContainer(app.container.select(BootModule), {
         fallbackOnErrors: true,
     });
+    app.commands = await createCommands(options.commands, app as Required<App>);
     return app;
 };
 
